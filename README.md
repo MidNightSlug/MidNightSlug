@@ -7,7 +7,7 @@
 | Задание | Выполнение | Баллы |
 | ------ | ------ | ------ |
 | Задание 1 | * | 60 |
-| Задание 2 | * | 20 |
+| Задание 2 | # | 20 |
 | Задание 3 | # | 20 |
 
 знак "*" - задание выполнено; знак "#" - задание не выполнено;
@@ -21,133 +21,132 @@
 Ознакомиться с основными операторами языка Python на примере реализации линейной регрессии.
 
 ## Задание 1
-### Написать программы Hello World на Python и Unity. 
-![image](https://user-images.githubusercontent.com/114512949/192598747-97beff65-b7f2-4ca7-9b06-52bf4f286749.png)
+### Реализовать совместную работу и передачу данных в связке Python - Google-Sheets – Unity. При выполнении задания используйте видео-материалы и исходные данные, предоставленные преподавателя курса.
 
-![image](https://user-images.githubusercontent.com/114512949/192605640-b1c46e93-6a55-4dff-bda2-74037532ee40.png)
+- В облачном сервисе google console подключить API для работы с google sheets и google drive.
+![image](https://user-images.githubusercontent.com/114512949/195171435-25783a91-bd5b-4af5-a0b1-b26e57cea887.png)
 
-## Задание 2
-### В разделе «ход работы» пошагово выполнить каждый пункт с описанием и примером реализации задачи по теме лабораторной работы.
-Ход работы:
-- Произвести подготовку данных для работы с алгоритмом линейной регрессии. 10 видов данных были установлены случайным образом, и данные находились в линейной зависимости. Данные преобразуются в формат массива, чтобы их можно было вычислить напрямую при использовании умножения и сложения.
-
+- Реализовать запись данных из скрипта на python в google-таблицу. Данные описывают изменение темпа инфляции на протяжении 11 отсчётных периодов, с учётом стоимости игрового объекта в каждый период.
 ```py
-In [ ]:
-#Import the required modules, numpy for calculation, and Matplotlib for drawing
+import gspread
 import numpy as np
-import matplotlib.pyplot as plt
-#This code is for jupyter Notebook only
-%matplotlib inline
-# define data, and change list to array
-x = [3,21,22,34,54,34,55,67,89,99]
-x = np.array(x)
-y = [2,22,24,65,79,82,55,130,150,199]
-y = np.array(y)
-#Show the effect of a scatter plot
-plt.scatter(x,y)
+gc = gspread.service_account(filename='vibrant-period-365214-26c8c7af6c28.json')
+sh = gc.open("UnitySheets")
+price = np.random.randint(2000, 10000, 11)
+mon = list(range(1,11))
+i = 0
+while i <= len(mon):
+    i += 1
+    if i == 0:
+        continue
+    else:
+        tempInf = ((price[i-1]-price[i-2])/price[i-2])*100
+        tempInf = str(tempInf)
+        tempInf = tempInf.replace('.',',')
+        sh.sheet1.update(('A'+ str(i)), str(i))
+        sh.sheet1.update(('B' + str(i)), str(price[i-1]))
+        sh.sheet1.update(('c' + str(i)), str(tempInf))
+        print(tempInf)
 ```
+        
+![image](https://user-images.githubusercontent.com/114512949/195171570-e1df0637-fa96-4fb5-9445-a3ad39561ac5.png)
 
-- Определите связанные функции. Функция модели: определяет модель линейной регрессии wx+b. Функция потерь: функция потерь среднеквадратичной ошибки. Функция оптимизации: метод градиентного спуска для нахождения частных производных w и b.
-```py
-#The basic linear regression model is wx+ b, and since this is a two-dimensional space, the model is ax+ b
+![image](https://user-images.githubusercontent.com/114512949/195171877-2ed43dd9-b9c7-45d4-948b-d08b0672231a.png)
 
-def model(a, b, x):
-    return a*x + b
+- Создать новый проект на Unity, который будет получать данные из google-таблицы, в которую были записаны данные в предыдущем пункте.
+  
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
+using SimpleJSON;
 
-#Tahe most commonly used loss function of linear regression model is the loss function of mean variance difference
-def loss_function(a, b, x, y):
-    num = len(x)
-    prediction=model(a,b,x)
-    return (0.5/num) * (np.square(prediction-y)).sum()
+public class NewBehaviourScript : MonoBehaviour
+{
+    public AudioClip goodSpeak;
+    public AudioClip normalSpeak;
+    public AudioClip badSpeak;
+    private AudioSource selectAudio;
+    private Dictionary<string,float> dataSet = new Dictionary<string, float>();
+    private bool statusStart = false;
+    private int i = 1;
 
-#The optimization function mainly USES partial derivatives to update two parameters a and b
-def optimize(a,b,x,y):
-    num = len(x)
-    prediction = model(a,b,x)
-    #Update the values of A and B by finding the partial derivatives of the loss function on a and b
-    da = (1.0/num) * ((prediction -y)*x).sum()
-    db = (1.0/num) * ((prediction -y).sum())
-    a = a - Lr*da
-    b = b - Lr*db
-    return a, b
+    // Start is called before the first frame update
+    void Start()
+    {
+        StartCoroutine(GoogleSheets());
+    }
 
-#iterated function, return a and b
-def iterate(a,b,x,y,times):
-    for i in range(times):
-        a,b = optimize(a,b,x,y)
-    return a,b
-```
+    // Update is called once per frame
+    void Update()
+    {
+        if (dataSet["Mon_" + i.ToString()] <= 10 & statusStart == false & i != dataSet.Count)
+        {
+            StartCoroutine(PlaySelectAudioGood());
+            Debug.Log(dataSet["Mon_" + i.ToString()]);
+        }
 
- - Начать итерацию
--  Шаг 1 Инициализация и модель итеративной оптимизации
-```py
-In [ ]:
-#Initialize parameters and display
-a = np.random.rand(1)
-print(a)
-b = np.random.rand(1)
-print(b)
-Lr = 0.000001
+        if (dataSet["Mon_" + i.ToString()] > 10 & dataSet["Mon_" + i.ToString()] < 100 & statusStart == false & i != dataSet.Count)
+        {
+            StartCoroutine(PlaySelectAudioNormal()); 
+            Debug.Log(dataSet["Mon_" + i.ToString()]);
+        }
 
-#For the first iteration, the parameter values, losses, and visualization after the iteration are displayed
-a,b = iterate(a,b,x,y,1)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-- Шаг 2 На второй итерации отображаются значения параметров, значения потерь и эффекты визуализации после итерации
-```py
-In [ ]:
-a,b = iterate(a,b,x,y,2)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-- Шаг 3 Третья итерация показывает значения параметров, значения потерь и визуализацию после итерации
-```py
-In [ ]:
-a,b = iterate(a,b,x,y,3)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-- Шаг 4 На четвертой итерации отображаются значения параметров, значения потерь и эффекты визуализации
-```py
-In [ ]:
-a,b = iterate(a,b,x,y,4)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-- Шаг 5 Пятая итерация показывает значение параметра, значение потерь и эффект визуализации после итерации
-```py
-In [ ]:
-a,b = iterate(a,b,x,y,5)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-- Шаг 6 10000-я итерация, показывающая значения параметров, потери и визуализацию после итерации
-```py
-In [ ]:
-a,b = iterate(a,b,x,y,10000)
-prediction=model(a,b,x)
-loss = loss_function(a, b, x, y)
-print(a,b,loss)
-plt.scatter(x,y)
-plt.plot(x,prediction)
-```
-![image](https://user-images.githubusercontent.com/114512949/192608577-3d2f316e-b128-4525-a302-ff58f1cc7e2e.png)
+        if (dataSet["Mon_" + i.ToString()] >= 100 & statusStart == false & i != dataSet.Count)
+        {
+            StartCoroutine(PlaySelectAudioBad()); 
+            Debug.Log(dataSet["Mon_" + i.ToString()]);
+        }
+    }
+
+    IEnumerator GoogleSheets()
+    {
+        UnityWebRequest curentResp = UnityWebRequest.Get("https://sheets.googleapis.com/v4/spreadssheets/1MlOhe7p-W83Sopt34ouzIDCCttmSpnfjOWFWBDd0o-8/values/Лист1?key=AIzaSyDspqxTWsemBXuHta-xCAkZJ1g8Q1kNiUg");
+        yield return curentResp.SendWebRequest();
+        string rawResp = curentResp.downloadHandler.text;
+        var rawJson = JSON.Parse(rawResp);
+        foreach (var itemRawJson in rawJson["values"])
+        {
+            var parseJson = JSON.Parse(itemRawJson.ToString());
+            var selectRow = parseJson[0].AsStringList;
+            dataSet.Add(("Mon_" + selectRow[0]), float.Parse(selectRow[2])); 
+        }
+        
+    }
+
+    IEnumerator PlaySelectAudioGood()
+    {
+        statusStart = true;
+        selectAudio = GetComponent<AudioSource>();
+        selectAudio.clip = goodSpeak;
+        selectAudio.Play();
+        yield return new WaitForSeconds(3);
+        statusStart = false;
+        i++;    
+    }
+
+    IEnumerator PlaySelectAudioNormal()
+    {
+        statusStart = true;
+        selectAudio = GetComponent<AudioSource>();
+        selectAudio.clip = normalSpeak;
+        selectAudio.Play();
+        yield return new WaitForSeconds(3);
+        statusStart = false;
+        i++;     
+    }
+
+    IEnumerator PlaySelectAudioBad()
+    {
+        statusStart = true;
+        selectAudio = GetComponent<AudioSource>();
+        selectAudio.clip = badSpeak;
+        selectAudio.Play();
+        yield return new WaitForSeconds(4);
+        statusStart = false;
+        i++;     
+    }
+}
 
 
 ## Выводы
